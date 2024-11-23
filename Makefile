@@ -194,7 +194,8 @@ UPROGS=\
 	$U/_grind\
 	$U/_wc\
 	$U/_zombie\
-
+	$U/_trace\
+	$U/_sysinfotest\
 
 
 
@@ -203,6 +204,7 @@ UPROGS += \
 	$U/_attack\
 	$U/_attacktest\
 	$U/_secret
+	
 endif
 
 ifeq ($(LAB),lock)

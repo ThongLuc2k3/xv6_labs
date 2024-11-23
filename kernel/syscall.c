@@ -101,6 +101,8 @@ extern uint64 sys_unlink(void);
 extern uint64 sys_link(void);
 extern uint64 sys_mkdir(void);
 extern uint64 sys_close(void);
+extern uint64 sys_trace(void);
+extern uint64 sys_sysinfo(void);
 
 // An array mapping syscall numbers from syscall.h
 // to the function that handles the system call.
@@ -126,7 +128,53 @@ static uint64 (*syscalls[])(void) = {
 [SYS_link]    sys_link,
 [SYS_mkdir]   sys_mkdir,
 [SYS_close]   sys_close,
+[SYS_trace]   sys_trace,
+[SYS_sysinfo] sys_sysinfo,
 };
+
+char *syscall_names[] = {
+    [SYS_fork]    = "fork",
+    [SYS_exit]    = "exit",
+    [SYS_wait]    = "wait",
+    [SYS_pipe]    = "pipe",
+    [SYS_read]    = "read",
+    [SYS_kill]    = "kill",
+    [SYS_exec]    = "exec",
+    [SYS_fstat]   = "fstat",
+    [SYS_chdir]   = "chdir",
+    [SYS_dup]     = "dup",
+    [SYS_getpid]  = "getpid",
+    [SYS_sbrk]    = "sbrk",
+    [SYS_sleep]   = "sleep",
+    [SYS_uptime]  = "uptime",
+    [SYS_open]    = "open",
+    [SYS_write]   = "write",
+    [SYS_mknod]   = "mknod",
+    [SYS_unlink]  = "unlink",
+    [SYS_link]    = "link",
+    [SYS_mkdir]   = "mkdir",
+    [SYS_close]   = "close",
+    [SYS_trace]   = "trace",
+    [SYS_sysinfo] = "sysinfo",
+};
+
+// Hàm ghi log trace syscall
+void log_syscall(int num) {
+    struct proc *p = myproc();
+    
+    // Kiểm tra xem syscall có cần được trace không
+    if (p->trace_mask & (1 << num)) {
+        // Lấy tên syscall từ mảng syscall_names
+        char *syscall_name = syscall_names[num];
+
+        // Lấy giá trị trả về của syscall từ trapframe
+        int retval = p->trapframe->a0;
+
+        // In thông tin syscall ra màn hình
+        printf("%d: syscall %s -> %d\n", p->pid, syscall_name, retval);
+    }
+}
+
 
 void
 syscall(void)
@@ -135,10 +183,14 @@ syscall(void)
   struct proc *p = myproc();
 
   num = p->trapframe->a7;
+  
+  // Kiểm tra nếu num hợp lệ và tồn tại trong mảng syscalls
   if(num > 0 && num < NELEM(syscalls) && syscalls[num]) {
-    // Use num to lookup the system call function for num, call it,
-    // and store its return value in p->trapframe->a0
+    // Gọi hàm syscall và lưu kết quả vào trapframe
     p->trapframe->a0 = syscalls[num]();
+
+    // Trước khi gọi syscall, ghi lại thông tin nếu cần thiết
+    log_syscall(num);
   } else {
     printf("%d %s: unknown sys call %d\n",
             p->pid, p->name, num);

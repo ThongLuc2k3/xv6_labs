@@ -5,7 +5,7 @@
 #include "memlayout.h"
 #include "spinlock.h"
 #include "proc.h"
-
+#include "sysinfo.h"
 uint64
 sys_exit(void)
 {
@@ -90,4 +90,34 @@ sys_uptime(void)
   xticks = ticks;
   release(&tickslock);
   return xticks;
+}
+
+uint64 sys_sysinfo(void) {
+    struct sysinfo info;
+    uint64 addr;
+
+    // Get the user-space pointer to the sysinfo struct
+    argaddr(0, &addr);
+
+    // Fill the sysinfo struct
+    info.freemem = getfreemem();
+    info.nproc = getnproc();
+
+    // Copy the struct back to user space
+    if (copyout(myproc()->pagetable, addr, (char*)&info, sizeof(info)) < 0)
+        return -1;
+
+    return 0;
+}
+
+uint64 sys_trace(void) {
+    int mask;
+    // Lấy tham số từ user space
+    argint(0, &mask);
+    if (mask < 0)
+      return -1;
+    // Lưu giá trị mask vào struct proc của tiến trình hiện tại
+    struct proc *p = myproc();
+    p->trace_mask = mask;
+    return 0;
 }
