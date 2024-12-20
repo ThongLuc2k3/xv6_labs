@@ -61,10 +61,18 @@
 //   USYSCALL (shared with kernel)
 //   TRAPFRAME (p->trapframe, used by the trampoline)
 //   TRAMPOLINE (the same page as in the kernel)
+
+
+// Định nghĩa TRAPFRAME là địa chỉ của khung xử lý (trap frame) 
+// trước khi lùi lại một trang bộ nhớ (PGSIZE)
 #define TRAPFRAME (TRAMPOLINE - PGSIZE)
+
 #ifdef LAB_PGTBL
+// Định nghĩa USYSCALL là địa chỉ ảo cho trang chia sẻ, 
+// được ánh xạ từ khung xử lý TRAPFRAME
 #define USYSCALL (TRAPFRAME - PGSIZE)
 
+// Cấu trúc usyscall lưu trữ PID của tiến trình
 struct usyscall {
   int pid;  // Process ID
 };

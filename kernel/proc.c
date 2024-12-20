@@ -106,11 +106,14 @@ allocpid()
 // If found, initialize state required to run in the kernel,
 // and return with p->lock held.
 // If there are no free procs, or a memory allocation fails, return 0.
+#ifdef LAB_PGTBL
+
 static struct proc*
 allocproc(void)
 {
   struct proc *p;
 
+  // Tìm một tiến trình chưa sử dụng
   for(p = proc; p < &proc[NPROC]; p++) {
     acquire(&p->lock);
     if(p->state == UNUSED) {
@@ -119,101 +122,123 @@ allocproc(void)
       release(&p->lock);
     }
   }
-  return 0;
+  return 0; // Không tìm thấy tiến trình chưa sử dụng
 
 found:
-  p->pid = allocpid();
-  p->state = USED;
+  p->pid = allocpid();           // Cấp phát ID cho tiến trình
+  p->state = USED;               // Đánh dấu tiến trình là đang sử dụng
 
-  // Allocate a trapframe page.
+  // Cấp phát một trang cho trapframe (lưu trữ trạng thái ngắt)
   if((p->trapframe = (struct trapframe *)kalloc()) == 0){
-    freeproc(p);
+    freeproc(p);                  // Giải phóng tài nguyên đã cấp phát
     release(&p->lock);
-    return 0;
+    return 0;                     // Nếu không cấp phát được trapframe, trả về NULL
   }
 
-  // An empty user page table.
+  // Cấp phát trang chia sẻ cho USYSCALL (hàm hệ thống)
+  if ((p->usyscallpage = (struct usyscall *)kalloc()) == 0)
+  {
+    freeproc(p);
+    release(&p->lock);
+    return 0;                     // Nếu không cấp phát được usyscallpage, trả về NULL
+  }
+
+  p->usyscallpage->pid = p->pid;  // Gán PID vào trang USYSCALL
+
+  // Tạo bảng trang cho tiến trình (chưa có bộ nhớ người dùng)
   p->pagetable = proc_pagetable(p);
+
   if(p->pagetable == 0){
-    freeproc(p);
+    freeproc(p);                  // Nếu không tạo được bảng trang, giải phóng tài nguyên
     release(&p->lock);
     return 0;
   }
 
-  // Set up new context to start executing at forkret,
-  // which returns to user space.
+  // Thiết lập ngữ cảnh mới cho tiến trình, bắt đầu từ forkret
   memset(&p->context, 0, sizeof(p->context));
-  p->context.ra = (uint64)forkret;
-  p->context.sp = p->kstack + PGSIZE;
+  p->context.ra = (uint64)forkret; // Đặt địa chỉ trả về khi tiến trình bắt đầu
+  p->context.sp = p->kstack + PGSIZE; // Đặt ngăn xếp khởi tạo
 
-  return p;
+  return p;  // Trả về tiến trình đã được cấp phát
 }
 
-// free a proc structure and the data hanging from it,
-// including user pages.
-// p->lock must be held.
+// Giải phóng tiến trình và các tài nguyên liên quan (bao gồm trang bộ nhớ người dùng)
 static void
 freeproc(struct proc *p)
 {
   if(p->trapframe)
-    kfree((void*)p->trapframe);
+    kfree((void*)p->trapframe);  // Giải phóng trapframe
   p->trapframe = 0;
+
+  // Giải phóng trang chia sẻ USYSCALL
+  if(p->usyscallpage)
+    kfree((void *)p->usyscallpage);
+  p->usyscallpage = 0;
+
+  // Giải phóng bảng trang và bộ nhớ người dùng
   if(p->pagetable)
     proc_freepagetable(p->pagetable, p->sz);
   p->pagetable = 0;
-  p->sz = 0;
-  p->pid = 0;
-  p->parent = 0;
-  p->name[0] = 0;
-  p->chan = 0;
-  p->killed = 0;
-  p->xstate = 0;
-  p->state = UNUSED;
+
+  p->sz = 0;  // Reset kích thước bộ nhớ người dùng
+  p->pid = 0; // Reset PID
+  p->parent = 0;  // Reset parent PID
+  p->name[0] = 0; // Reset tên tiến trình
+  p->chan = 0;  // Reset kênh chờ
+  p->killed = 0;  // Reset trạng thái đã bị giết
+  p->xstate = 0;  // Reset trạng thái kết thúc
+  p->state = UNUSED;  // Đặt trạng thái của tiến trình về UNUSED
 }
 
-// Create a user page table for a given process, with no user memory,
-// but with trampoline and trapframe pages.
+// Giải phóng bảng trang của tiến trình và bộ nhớ vật lý tương ứng
+void proc_freepagetable(pagetable_t pagetable, uint64 sz)
+{
+  uvmunmap(pagetable, TRAMPOLINE, 1, 0);   // Giải phóng trang trampoline
+  uvmunmap(pagetable, TRAPFRAME, 1, 0);    // Giải phóng trang trapframe
+  uvmunmap(pagetable, USYSCALL, 1, 0);     // Giải phóng trang usyscall
+  uvmfree(pagetable, sz);                  // Giải phóng bộ nhớ người dùng
+}
+
+// Tạo bảng trang cho tiến trình với các trang đặc biệt như trampoline, trapframe và usyscall
 pagetable_t
 proc_pagetable(struct proc *p)
 {
   pagetable_t pagetable;
 
-  // An empty page table.
+  // Tạo bảng trang mới
   pagetable = uvmcreate();
   if(pagetable == 0)
-    return 0;
+    return 0;  // Nếu không tạo được bảng trang, trả về NULL
 
-  // map the trampoline code (for system call return)
-  // at the highest user virtual address.
-  // only the supervisor uses it, on the way
-  // to/from user space, so not PTE_U.
+  // Ánh xạ mã trampoline (dùng khi trả về từ hệ thống gọi)
+  // Trampoline chỉ được sử dụng bởi supervisor, không phải người dùng (PTE_R | PTE_X)
   if(mappages(pagetable, TRAMPOLINE, PGSIZE,
               (uint64)trampoline, PTE_R | PTE_X) < 0){
-    uvmfree(pagetable, 0);
+    uvmfree(pagetable, 0);  // Giải phóng bảng trang nếu ánh xạ thất bại
     return 0;
   }
 
-  // map the trapframe page just below the trampoline page, for
-  // trampoline.S.
+  // Ánh xạ trang trapframe ngay dưới trampoline
   if(mappages(pagetable, TRAPFRAME, PGSIZE,
               (uint64)(p->trapframe), PTE_R | PTE_W) < 0){
-    uvmunmap(pagetable, TRAMPOLINE, 1, 0);
+    uvmunmap(pagetable, TRAMPOLINE, 1, 0);  // Giải phóng trampoline nếu ánh xạ thất bại
     uvmfree(pagetable, 0);
     return 0;
   }
 
-  return pagetable;
+  // Ánh xạ trang usyscall ngay dưới trapframe
+  if (mappages(pagetable, USYSCALL, PGSIZE, (uint64)(p->usyscallpage), PTE_U | PTE_R) < 0)
+  {
+    uvmunmap(pagetable, TRAMPOLINE, 1, 0);  // Giải phóng trampoline nếu ánh xạ thất bại
+    uvmunmap(pagetable, TRAPFRAME, 1, 0);  // Giải phóng trapframe nếu ánh xạ thất bại
+    uvmfree(pagetable, 0);
+    return 0;
+  }
+
+  return pagetable;  // Trả về bảng trang đã được ánh xạ
 }
 
-// Free a process's page table, and free the
-// physical memory it refers to.
-void
-proc_freepagetable(pagetable_t pagetable, uint64 sz)
-{
-  uvmunmap(pagetable, TRAMPOLINE, 1, 0);
-  uvmunmap(pagetable, TRAPFRAME, 1, 0);
-  uvmfree(pagetable, sz);
-}
+#endif
 
 // a user program that calls exec("/init")
 // assembled from ../user/initcode.S
