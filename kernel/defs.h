@@ -181,9 +181,9 @@ uint64          walkaddr(pagetable_t, uint64);
 int             copyout(pagetable_t, uint64, char *, uint64);
 int             copyin(pagetable_t, char *, uint64, uint64);
 int             copyinstr(pagetable_t, char *, uint64, uint64);
-#if defined(LAB_PGTBL) || defined(SOL_MMAP)
+// #if defined(LAB_PGTBL) || defined(SOL_MMAP)
 void            vmprint(pagetable_t);
-#endif
+// #endif
 #ifdef LAB_PGTBL
 pte_t*          pgpte(pagetable_t, uint64);
 #endif
