@@ -106,6 +106,8 @@ allocpid()
 // If found, initialize state required to run in the kernel,
 // and return with p->lock held.
 // If there are no free procs, or a memory allocation fails, return 0.
+
+#ifdef LAB_PGTBL
 static struct proc*
 allocproc(void)
 {
@@ -132,10 +134,21 @@ found:
     return 0;
   }
 
-  // An empty user page table.
-  p->pagetable = proc_pagetable(p);
-  if(p->pagetable == 0){
+  // Cấp phát trang chia sẻ cho USYSCALL (hàm hệ thống)
+  if ((p->usyscallpage = (struct usyscall *)kalloc()) == 0)
+  {
     freeproc(p);
+    release(&p->lock);
+    return 0;                     // Nếu không cấp phát được usyscallpage, trả về NULL
+  }
+
+  p->usyscallpage->pid = p->pid;  // Gán PID vào trang USYSCALL
+
+  // Tạo bảng trang cho tiến trình (chưa có bộ nhớ người dùng)
+  p->pagetable = proc_pagetable(p);
+
+  if(p->pagetable == 0){
+    freeproc(p);                  // Nếu không tạo được bảng trang, giải phóng tài nguyên
     release(&p->lock);
     return 0;
   }
@@ -158,6 +171,12 @@ freeproc(struct proc *p)
   if(p->trapframe)
     kfree((void*)p->trapframe);
   p->trapframe = 0;
+
+   // Giải phóng trang chia sẻ USYSCALL
+  if(p->usyscallpage)
+    kfree((void *)p->usyscallpage);
+  p->usyscallpage = 0;
+
   if(p->pagetable)
     proc_freepagetable(p->pagetable, p->sz);
   p->pagetable = 0;
@@ -202,6 +221,16 @@ proc_pagetable(struct proc *p)
     return 0;
   }
 
+  // Ánh xạ trang usyscall ngay dưới trapframe
+  if (mappages(pagetable, USYSCALL, PGSIZE, (uint64)(p->usyscallpage), PTE_U | PTE_R) < 0)
+  {
+    uvmunmap(pagetable, TRAMPOLINE, 1, 0);  // Giải phóng trampoline nếu ánh xạ thất bại
+    uvmunmap(pagetable, TRAPFRAME, 1, 0);  // Giải phóng trapframe nếu ánh xạ thất bại
+    uvmunmap(pagetable, USYSCALL, 1, 0);  // Giải phóng trang usyscall nếu ánh xạ thất bại
+    uvmfree(pagetable, 0);
+    return 0;
+  }
+
   return pagetable;
 }
 
@@ -212,8 +241,11 @@ proc_freepagetable(pagetable_t pagetable, uint64 sz)
 {
   uvmunmap(pagetable, TRAMPOLINE, 1, 0);
   uvmunmap(pagetable, TRAPFRAME, 1, 0);
+  uvmunmap(pagetable, USYSCALL, 1, 0);     // Giải phóng trang usyscall
   uvmfree(pagetable, sz);
 }
+#endif
+
 
 // a user program that calls exec("/init")
 // assembled from ../user/initcode.S
