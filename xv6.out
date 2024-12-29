@@ -1,3 +1,4 @@
+*** Now run 'gdb' in another window.
 
 xv6 kernel is booting
 
@@ -19,8 +20,8 @@ init: starting sh
 $ usertests -q
 usertests starting
 test copyin: OK
-test copyout: usertrap(): unexpected scause 0x000000000000000c pid=6
-            sepc=0x0000000000056e0a stval=0x0000000000056e0a
+test copyout: usertrap(): unexpected scause 0x0000000000000002 pid=6
+            sepc=0x00000000000006ea stval=0x0000000000003220
 FAILED
 SOME TESTS FAILED
-$ qemu-system-riscv64: terminating on signal 15 from pid 5757 (make)
+$ qemu-system-riscv64: terminating on signal 15 from pid 8815 (make)

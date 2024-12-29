@@ -107,7 +107,7 @@ allocpid()
 // and return with p->lock held.
 // If there are no free procs, or a memory allocation fails, return 0.
 
-#ifdef LAB_PGTBL
+
 static struct proc*
 allocproc(void)
 {
@@ -138,7 +138,7 @@ found:
   if ((p->usyscallpage = (struct usyscall *)kalloc()) == 0)
   {
     freeproc(p);
-    release(&p->lock);
+    release(&p->lock);   
     return 0;                     // Nếu không cấp phát được usyscallpage, trả về NULL
   }
 
@@ -244,7 +244,7 @@ proc_freepagetable(pagetable_t pagetable, uint64 sz)
   uvmunmap(pagetable, USYSCALL, 1, 0);     // Giải phóng trang usyscall
   uvmfree(pagetable, sz);
 }
-#endif
+
 
 
 // a user program that calls exec("/init")
