@@ -70,14 +70,44 @@ sys_sleep(void)
 }
 
 
-#ifdef LAB_PGTBL
-int
-sys_pgaccess(void)
-{
-  // lab pgtbl: your code here.
-  return 0;
+int 
+sys_pgaccess(void) {
+    uint64 start_va;
+    int num_pages;
+    uint64 user_address;
+
+    argaddr(0, &start_va);   
+    argint(1, &num_pages);     
+    argaddr(2, &user_address);   
+
+    if (num_pages <= 0) {
+        return -1;
+    }
+
+    if (user_address >= MAXVA || user_address % 4 != 0) { 
+        return -1;
+    }
+    
+    struct proc *my_proc = myproc();
+    int bitmask = 0;
+
+    for (int i = 0; i < num_pages; i++) {
+        uint64 next_address = start_va + i * PGSIZE;
+        pte_t *pte = walk(my_proc->pagetable, next_address, 0);
+
+        if(pte == 0) {
+            continue;
+        }
+
+        if ((*pte & PTE_V) && (*pte & PTE_A)) {
+            bitmask |= (1 << i);
+            *pte &= ~PTE_A;
+        }
+    }
+
+    return copyout(my_proc->pagetable, user_address, (char *)&bitmask, sizeof(bitmask));
 }
-#endif
+
 
 uint64
 sys_kill(void)

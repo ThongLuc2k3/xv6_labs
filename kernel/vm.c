@@ -449,3 +449,31 @@ copyinstr(pagetable_t pagetable, char *dst, uint64 srcva, uint64 max)
     return -1;
   }
 }
+
+
+void vmprint_recursive(pagetable_t pagetable, int level) {
+    for (int i = 0; i < 512; i++) {
+        pte_t pte = pagetable[i];
+        if (pte != 0 && (PTE_FLAGS(pte) & PTE_V)) {
+            uint64 pa = PTE2PA(pte);
+            printf(" ..");
+            // Print indentation for current level
+            for (int j = 0; j < level; j++) {
+                printf(" ..");
+            }
+            // Print current PTE and its physical address
+            printf("%d: pte %p pa %p\n", i, (pagetable_t)pte, (pagetable_t)pa);
+            // Check leaf node
+            if (!PTE_LEAF(pte)) {
+                pagetable_t next_pagetable = (pagetable_t)pa;
+                vmprint_recursive(next_pagetable, level + 1);
+            }
+        }
+    }
+}
+
+// Main function to print the page table
+void vmprint(pagetable_t pagetable) {
+    printf("page table %p\n", pagetable);
+    vmprint_recursive(pagetable, 0);
+}
