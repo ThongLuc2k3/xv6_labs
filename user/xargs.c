@@ -9,13 +9,19 @@ int main(int argc, char *argv[]) {
         exit(1);
     }
 
+    int start_idx = 1;
+    if (strcmp(argv[1], "-n") == 0)
+        start_idx = 3;
+    else
+        start_idx = 1;
+
     char *args[MAXARG];
-    for (int i = 1; i < argc; i++) {
-        args[i - 1] = argv[i];  // Bỏ qua argv[0] để args[0] chứa lệnh chính
+    for (int i = start_idx; i < argc; i++) {
+        args[i - start_idx] = argv[i];
     }
 
     char input[500];
-    int pos = argc - 1;
+    int pos = argc - start_idx;
 
     while (1) {
         int n = 0;
@@ -34,9 +40,10 @@ int main(int argc, char *argv[]) {
                     printf("Exec failed\n");
                     exit(1);
                 } else {
+                    n = -1;
+                    memset(input, 0, sizeof(input));
                     wait(0); // Chờ tiến trình con hoàn thành
                 }
-                break;
             }
             n++;
             if (n == 500) {
@@ -44,9 +51,7 @@ int main(int argc, char *argv[]) {
                 exit(1);
             }
         }
-
         if (n == 0) break;  // Kết thúc nếu không đọc được gì từ stdin
     }
-
     exit(0);
 }
