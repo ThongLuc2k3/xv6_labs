@@ -31,45 +31,45 @@ int is_current_or_parent_dir(const char *name) {
 // Recursively find the target name in the directory
 void find(char *path, char *target_name) {
 	char buf[512], *p;
-	struct dirent de;
-	struct stat st;
+	struct dirent de; // thông tin từng mục (tên, số inode)
+	struct stat st; // thông tin trạng thái (loại, kích thước,...)
 	int fd = open_directory(path);
 	
 	if (fd < 0) return;
-	if (fstat(fd, &st) < 0) {
+	if (fstat(fd, &st) < 0) { // lấy thông tin trạng thái 
 		fprintf(2, "find: cannot stat %s\n", path);
 		close(fd);
 		return;
 	}
 
-	if (st.type == T_FILE && !strcmp(format_name(path), target_name)) {
+	if (st.type == T_FILE && !strcmp(format_name(path), target_name)) { // nếu st.type là loại tệp và lấy tên tệp trong đường dẫn so sánh với tên tệp truyền vào 
 		printf("%s\n", path);
 		close(fd);
 		return;
 	} 
 	
-	if (st.type != T_DIR) {
+	if (st.type != T_DIR) { // nếu không là thư mục thì thoát
 		close(fd);
 		return;
 	}
 	
-	if (strlen(path) + DIRSIZ + 2 > sizeof(buf)) {
+	if (strlen(path) + DIRSIZ + 2 > sizeof(buf)) { // nếu path + tên thư mục vượt quá bộ đệm buf
 		fprintf(2, "find: path too long\n");
 		close(fd);
 		return;
 	}
 	
-	strcpy(buf, path);
-	p = buf + strlen(buf);
-	*p++ = '/';
+	strcpy(buf, path); 
+	p = buf + strlen(buf);// sao chép đường dẫn và di chuyển đến cuối đường dẫn 
+	*p++ = '/'; // thêm '/' để cbi nối tên các mục con 
 
-	while (read_directory(fd, &de)) {
-		if (de.inum == 0 || is_current_or_parent_dir(de.name)) continue;
+	while (read_directory(fd, &de)) { //đọc từng mục trong thư mục 
+		if (de.inum == 0 || is_current_or_parent_dir(de.name)) continue; // bỏ qua các thư mục không hợp lệ 
 		
-		memmove(p, de.name, DIRSIZ);
+		memmove(p, de.name, DIRSIZ); // sao chép tên mục vào vị trí tiếp theo trong buf
 		p[DIRSIZ] = 0;
 		
-		find(buf, target_name);
+		find(buf, target_name); // gọi đệ quy để tiếp tục tìm kiếm 
 	}
 	close(fd);
 }

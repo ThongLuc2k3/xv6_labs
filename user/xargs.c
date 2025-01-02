@@ -25,8 +25,8 @@ int main(int argc, char *argv[]) {
 
     while (1) {
         int n = 0;
-        while (read(0, &input[n], 1) == 1) {
-            if (input[n] == '\n') {
+        while (read(0, &input[n], 1) == 1) { // read(0,..) với 0 là stdin đầu vào, 1 là ra, 2 là lỗi chuẩn.
+            if (input[n] == '\n') { 
                 input[n] = '\0';  // Đổi '\n' thành '\0' để kết thúc chuỗi
                 args[pos] = input; // Đặt dòng đầu vào làm tham số cuối của lệnh
                 args[pos + 1] = 0; // Kết thúc danh sách đối số
