@@ -182,7 +182,7 @@ syscall(void)
   int num;
   struct proc *p = myproc();
 
-  num = p->trapframe->a7;
+  num = p->trapframe->a7; // Lưu chỉ số của câu lệnh cần được trace
   
   // Kiểm tra nếu num hợp lệ và tồn tại trong mảng syscalls
   if(num > 0 && num < NELEM(syscalls) && syscalls[num]) {

@@ -111,9 +111,9 @@ uint64 sys_sysinfo(void) {
 }
 
 uint64 sys_trace(void) {
-    int mask;
+    int mask; // Bit mask quyết định systemm call nào được theo dõi
     // Lấy tham số từ user space
-    argint(0, &mask);
+    argint(0, &mask); // Lấy mask từ user space sang kernel space
     if (mask < 0)
       return -1;
     // Lưu giá trị mask vào struct proc của tiến trình hiện tại
