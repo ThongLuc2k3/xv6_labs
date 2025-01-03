@@ -13,6 +13,10 @@ main(int argc, char *argv[])
     fprintf(2, "Usage: %s mask command\n", argv[0]);
     exit(1);
   }
+  //argv[1]: Là đối số đầu tiên sau tên chương trình, đại diện cho MASK.
+  // atoi(argv[1]): Chuyển đổi chuỗi thành số nguyên. Ví dụ:
+  // argv[1] = "32" → MASK = 32.
+  // trace(): Gọi syscall SYS_trace với tham số MASK = 32.
 
   if (trace(atoi(argv[1])) < 0) {
     fprintf(2, "%s: trace failed\n", argv[0]);

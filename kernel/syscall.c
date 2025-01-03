@@ -101,6 +101,7 @@ extern uint64 sys_unlink(void);
 extern uint64 sys_link(void);
 extern uint64 sys_mkdir(void);
 extern uint64 sys_close(void);
+// add hàm triển kahi ssyscall ở đây
 extern uint64 sys_trace(void);
 extern uint64 sys_sysinfo(void);
 
@@ -128,8 +129,8 @@ static uint64 (*syscalls[])(void) = {
 [SYS_link]    sys_link,
 [SYS_mkdir]   sys_mkdir,
 [SYS_close]   sys_close,
-[SYS_trace]   sys_trace,
-[SYS_sysinfo] sys_sysinfo,
+[SYS_trace]   sys_trace, // ở đây nữa 
+[SYS_sysinfo] sys_sysinfo, // ở đây
 };
 
 char *syscall_names[] = {
@@ -154,13 +155,13 @@ char *syscall_names[] = {
     [SYS_link]    = "link",
     [SYS_mkdir]   = "mkdir",
     [SYS_close]   = "close",
-    [SYS_trace]   = "trace",
+    [SYS_trace]   = "trace", // define ở đây!
     [SYS_sysinfo] = "sysinfo",
 };
 
 // Hàm ghi log trace syscall
 void log_syscall(int num) {
-    struct proc *p = myproc();
+    struct proc *p = myproc(); // lấy ra tiến trình hiện tại
     
     // Kiểm tra xem syscall có cần được trace không
     if (p->trace_mask & (1 << num)) {

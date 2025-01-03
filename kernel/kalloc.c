@@ -95,11 +95,11 @@ uint64 getfreemem(void) {
     struct run *r;
     uint64 free_mem = 0;
 
-    acquire(&kmem.lock);
-    for (r = kmem.freelist; r; r = r->next) {
+    acquire(&kmem.lock);  // Khoá để tránh race condition khi truy cập danh sách bộ nhớ trống
+    for (r = kmem.freelist; r; r = r->next) { // Duyệt qua danh sách bộ nhớ trống
         free_mem += PGSIZE;
     }
-    release(&kmem.lock);
+    release(&kmem.lock); // Mở khoá sau khi hoàn tất
 
-    return free_mem;
+    return free_mem; // Trả về tổng dung lượng bộ nhớ trống
 }

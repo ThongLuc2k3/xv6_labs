@@ -93,7 +93,7 @@ sys_uptime(void)
 }
 
 uint64 sys_sysinfo(void) {
-    struct sysinfo info;
+    struct sysinfo info; // Tạo struct để lưu thông tin hệ thống
     uint64 addr;
 
     // Get the user-space pointer to the sysinfo struct
@@ -110,6 +110,7 @@ uint64 sys_sysinfo(void) {
     return 0;
 }
 
+//triển khai hàm đó ở đây
 uint64 sys_trace(void) {
     int mask; // Bit mask quyết định systemm call nào được theo dõi
     // Lấy tham số từ user space
@@ -120,4 +121,12 @@ uint64 sys_trace(void) {
     struct proc *p = myproc();
     p->trace_mask = mask;
     return 0;
-}
+}  
+
+//argint(0, &mask);
+// a7 = 22: Đặt số syscall vào thanh ghi a7 (được đọc trong kernel).
+// ecall: Nhảy vào kernel để gọi hàm xử lý sys_trace().
+// Tham số truyền qua thanh ghi:
+// a0: Tham số MASK = 32 được lưu vào thanh ghi này.
+
+// Sau khi viết xong sys_trace này rồi thì chúng ta sửa lại định dạng in log của syscall này ở bên file syscall.c
