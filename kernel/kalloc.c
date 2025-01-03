@@ -101,5 +101,5 @@ uint64 getfreemem(void) {
     }
     release(&kmem.lock);// giải phóng khóa
 
-    return free_mem;
+    return free_mem; // Trả về tổng dung lượng bộ nhớ trống
 }
