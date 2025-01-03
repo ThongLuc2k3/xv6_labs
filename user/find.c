@@ -1,22 +1,24 @@
-#include "kernel/types.h"
-#include "kernel/stat.h"
-#include "user/user.h"
-#include "kernel/fs.h"
-#include "kernel/fcntl.h"
+#include "kernel/types.h"  // Định nghĩa các kiểu dữ liệu cơ bản
+#include "kernel/stat.h"   // Hỗ trợ truy xuất thông tin trạng thái tệp/thư mục
+#include "user/user.h"     // Cung cấp các hàm hệ thống như exit(), printf()
+#include "kernel/fs.h"     // Định nghĩa cấu trúc thư mục (struct dirent)
+#include "kernel/fcntl.h"  // Hỗ trợ thao tác mở tệp với cờ (flag) O_RDONLY
 
 char* format_name(char *path) {
-	char *p;
-	for (p = path + strlen(path); p >= path && *p != '/'; p--);
-	return p + 1;
-}
+    char *p;
+    for (p = path + strlen(path); p >= path && *p != '/'; p--); // Duyệt ngược từ cuối đường dẫn để tìm '/'
+    return p + 1; // Trả về con trỏ ngay sau '/' (tên tệp)
+} // Đường dẫn /dir1/dir2/file.txt → Trả về "file.txt".
 
 int open_directory(char *path) {
-	int fd = open(path, O_RDONLY);
-	if (fd < 0) {
-		fprintf(2, "find: cannot open [%s]\n", path);
-	}
-	return fd;
-}
+    int fd = open(path, O_RDONLY); // Mở thư mục chỉ đọc
+    if (fd < 0) { // Nếu không mở được, báo lỗi
+        fprintf(2, "find: cannot open [%s]\n", path);
+    }
+    return fd; // Trả về file descriptor của thư mục
+} 
+
+
 
 // Read directory entries and handle errors
 int read_directory(int fd, struct dirent *de) {
@@ -26,7 +28,7 @@ int read_directory(int fd, struct dirent *de) {
 // Check if the entry is the current or parent directory
 int is_current_or_parent_dir(const char *name) {
 	return !strcmp(name, ".") || !strcmp(name, "..");
-}
+} 
 
 // Recursively find the target name in the directory
 void find(char *path, char *target_name) {
