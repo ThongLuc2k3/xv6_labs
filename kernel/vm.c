@@ -472,6 +472,16 @@ void vmprint_recursive(pagetable_t pagetable, int level) {
     }
 }
 
+// Vì mỗi mức, pagetable sẽ có 512 PTE cho nên đầu tiên ta sẽ duyệt lần lượt các PTE này, 
+// từ phần tử thứ 0 cho tới phần tử thứ 511 của pagetable[]. Ở mỗi pte, ta thực hiện phép 
+// AND với PTE_V để kiểm tra xem pte đó có hợp lệ hay không. Nếu có, ta tiến hành in ra 
+// số thứ tự của pte, index chính của pte và địa chỉ vật lý của pte đó. Đương nhiên, việc in 
+// ra các pte này phải tuân theo việc thụt lề theo từng mức của pagetable mà đề bài đã 
+// yêu cầu. Sau khi in đủ thông tin này, hàm sẽ kiểm tra xem pagetable đang chứa PTE 
+// này có phải đang ở mức 0 hoặc 1 hay không. Nếu phải, thì ta sẽ lấy địa chỉ vật lý của 
+// pte này bằng cách dùng câu lệnh PTE2PA(pte), sau đó ép kiểu thành pagetable_t và 
+// gọi đệ quy lại hàm printPTE() này với level được cộng thêm 1
+
 // Main function to print the page table
 void vmprint(pagetable_t pagetable) {
     printf("page table %p\n", pagetable);

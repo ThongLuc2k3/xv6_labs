@@ -128,7 +128,7 @@ exec(char *path, char **argv)
   p->trapframe->sp = sp; // initial stack pointer
   proc_freepagetable(oldpagetable, oldsz);
 
-  // Nguyên: Kiểm tra vmprint trước khi trả về argc
+  // Kiểm tra vmprint trước khi trả về argc
   if (p->pid == 1)
     vmprint(p->pagetable);
 

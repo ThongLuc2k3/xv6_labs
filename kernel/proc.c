@@ -135,10 +135,12 @@ found:
   }
 
   // Cấp phát trang chia sẻ cho USYSCALL (hàm hệ thống)
+  // cấp phát này được thực hiện qua câu lệnh p->usyscallPage = (struct usyscall *)kalloc().
+  // Nếu giá trị này trả về 0 --> failed --> giải phóng tài  nguyên cho tiến trình p
   if ((p->usyscallpage = (struct usyscall *)kalloc()) == 0)
   {
     freeproc(p);
-    release(&p->lock);   
+    release(&p->lock);   // giải phóng thông qua câu lệnh release(&p->lock)
     return 0;                     // Nếu không cấp phát được usyscallpage, trả về NULL
   }
 
@@ -173,6 +175,8 @@ freeproc(struct proc *p)
   p->trapframe = 0;
 
    // Giải phóng trang chia sẻ USYSCALL
+   // ta sẽ  thực hiện việc giải phóng vùng nhớ cho usyscallPage của tiến trình p thông qua câu lệnh kfree((void*)p->usyscallPage)
+   //  p->usyscallPage bằng 0 để đảm bảo câu lệnh giải phóng thành công
   if(p->usyscallpage)
     kfree((void *)p->usyscallpage);
   p->usyscallpage = 0;
@@ -222,6 +226,31 @@ proc_pagetable(struct proc *p)
   }
 
   // Ánh xạ trang usyscall ngay dưới trapframe
+  // Quá trình này được thực hiện như sau: ta sẽ thực hiện hàm mappages() để ánh xạ trang usyscallPage của 
+  // tiến trình p vào vị trí USYSCALL trong bảng trang của tiến trình p.
+  // pagetable là con trỏ trỏ đến bảng trang của tiến trình đang chạy
+  // USYSCALL là địa chỉ bắt đầu của địa chỉ ảo mà chúng ta đang muốn ánh xạ trang vào
+  // (uint64)(p->usyscallPage) là địa chỉ vật lý của 1 trang mà ta muốn ánh xạ vào địa chỉ ảo
+  //  PGSIZE là kích thước của 1 trang (thường là 4096 byte)
+  // PTE_R là cờ cho phép các chỉ thị được đọc từ trang
+  // PTE_U cho phép các chỉ thị của user space được truy cập các PTE đó. 
+
+
+  // mappages usage: thiết lập một liên kết giữa địa chỉ ảo với địa chỉ vật lý vào bảng trang của 1 tiến trình đang chạy
+  // CPU truy cập vào địa chỉ ảo thì nó có thể tìm thấy địa chỉ vật lý tương ứng.
+
+
+  //Quay trở về với các câu lệnh trong hàm pagetable_t proc_pagetable(struct proc 
+  //*p), nếu hàm mappages trả về -1, tức là quá trình ánh xạ không thành công thì 
+  //ta sẽ chạy lệnh uvmunmap(pagetable, TRAMPOLINE, 1, 0); để hủy ánh xạ trước 
+  //đó cho địa chỉ ảo TRAMPOLINE, đồng thời giải phóng bộ nhớ cho pagetable. 
+  // ta đang thực hiện việc ánh xạ 1 trang tới địa chỉ của USYSCALL nên khi 
+  // thực hiện việc giải phóng trang đã cấp phát ở hàm freeproc() thì ta cần phải hủy ánh 
+  // xạ cho địa chỉ ảo USYSCALL bằng cách chạy dòng lệnh uvmunmap(pagetable, 
+  //USYSCALL, 1, 0); trước khi thực hiện lệnh uvmfree(pagetable, sz) để giải phóng toàn bộ 
+  //vùng nhớ của pagetable. Câu lệnh này sẽ được thực hiện ở hàm void 
+  //proc_freepagetable(pagetable_t pagetable, uint64 sz) trong kernel/proc.c. 
+
   if (mappages(pagetable, USYSCALL, PGSIZE, (uint64)(p->usyscallpage), PTE_U | PTE_R) < 0)
   {
     uvmunmap(pagetable, TRAMPOLINE, 1, 0);  // Giải phóng trampoline nếu ánh xạ thất bại
@@ -231,8 +260,13 @@ proc_pagetable(struct proc *p)
     return 0;
   }
 
+  
   return pagetable;
 }
+// Why giải phóng: TRAMPOLINE đã được ánh xạ trước đó. Nếu ánh xạ USYSCALL thất bại, tiến trình sẽ không được tạo.
+// Nếu tiến trình không được tạo, ta cần giải phóng TRAMPOLINE đã được ánh xạ trước đó.
+// Bộ nhớ dành cho TRAPFRAME đã cấp phát sẽ trở nên vô dụng nếu tiến trình không được tạo → Giải phóng.
+// USYSCALL là mục tiêu ánh xạ chính ở đây. Nếu việc ánh xạ thất bại, vùng bộ nhớ đã cấp phát cho nó không còn giá trị.
 
 // Free a process's page table, and free the
 // physical memory it refers to.
