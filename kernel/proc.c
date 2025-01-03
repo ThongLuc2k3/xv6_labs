@@ -697,10 +697,10 @@ procdump(void)
 }
 
 uint64 getnproc(void) {
-    struct proc *p;
-    uint64 count = 0;
+    struct proc *p; // con trỏ duyệt qua từng phần tử trong bảng tiến trình proc
+    uint64 count = 0; // biến đếm
 
-    for (p = proc; p < &proc[NPROC]; p++) {
+    for (p = proc; p < &proc[NPROC]; p++) {// duyệt qua bảng tiến trình proc, nếu tiến trình nào đang hoạt động (khác unused) thì đếm vào count
         if (p->state != UNUSED) {
             count++;
         }

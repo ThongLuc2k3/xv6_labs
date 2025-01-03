@@ -92,14 +92,14 @@ kalloc(void)
 }
 
 uint64 getfreemem(void) {
-    struct run *r;
-    uint64 free_mem = 0;
+    struct run *r; // con trỏ đến một cấu trúc run trỏ đến run khác, mỗi run lưu một khối bộ nhớ
+    uint64 free_mem = 0; // biến lưu trữ free memory tính toán
 
-    acquire(&kmem.lock);
-    for (r = kmem.freelist; r; r = r->next) {
-        free_mem += PGSIZE;
+    acquire(&kmem.lock); // Khóa bộ nhớ để không có tiến trình khác thay đổi freelist trong khi đang chạy
+    for (r = kmem.freelist; r; r = r->next) {// duyệt hết danh sách liên kết trong kmem.freelist, mỗi phần tử đại diện cho một vùng nhớ trống
+        free_mem += PGSIZE;// cộng thêm vùng nhớ trống khi duyệt từng phần tử trống trong freelist
     }
-    release(&kmem.lock);
+    release(&kmem.lock);// giải phóng khóa
 
     return free_mem;
 }
